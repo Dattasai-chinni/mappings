@@ -8,7 +8,7 @@ public class HomeController {
 	
 	@GetMapping("/api/hello")
 	public String hello() {
-		return "hello mappings";
+		return "hello mappings"; //returning string
 	}
 
 }
