@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Chat Application</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #chat {
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: 400px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+        #message {
+            width: 300px;
+        }
+        .join-message {
+            text-align: center;
+            font-style: italic;
+            color: #888;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome, <span id="username" th:text="${username}"></span>!</h1>
+    <div id="chat"></div>
+    <input type="text" id="message" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        let stompClient = null;
+        const chat = document.getElementById('chat');
+        const username = document.getElementById('username').textContent;
+
+        function connect() {
+            const socket = new SockJS('/chat-websocket');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function () {
+                // Subscribe to the public chat topic
+                stompClient.subscribe('/topic/public', function (message) {
+                    const chatMessage = JSON.parse(message.body);
+                    showMessage(chatMessage);
+                });
+
+                // Show "username has joined" in the center of the chat box
+                showJoinMessage(`${username} has joined the chat!`);
+
+                // Send a JOIN message when the user connects
+                stompClient.send("/app/newUser", {}, JSON.stringify({
+                    sender: username,
+                    type: "JOIN"
+                }));
+            });
+        }
+
+        function sendMessage() {
+            const message = document.getElementById('message').value;
+            if (message.trim() === '') return;
+
+            stompClient.send("/app/sendMessage", {}, JSON.stringify({
+                content: message,
+                sender: username,
+                type: "CHAT"
+            }));
+
+            document.getElementById('message').value = '';
+        }
+
+        function showMessage(message) {
+            const p = document.createElement('p');
+            p.textContent = message.sender + ": " + message.content;
+            chat.appendChild(p);
+        }
+
+        function showJoinMessage(message) {
+            const joinMessage = document.createElement('p');
+            joinMessage.textContent = message;
+            joinMessage.className = 'join-message';
+            chat.appendChild(joinMessage);
+        }
+
+        connect();
+    </script>
+</body>
+</html>
